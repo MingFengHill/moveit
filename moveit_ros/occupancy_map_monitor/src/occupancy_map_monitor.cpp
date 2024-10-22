@@ -40,6 +40,10 @@
 #include <moveit/occupancy_map_monitor/occupancy_map.h>
 #include <moveit/occupancy_map_monitor/occupancy_map_monitor.h>
 #include <XmlRpcException.h>
+#include <octomap/math/Vector3.h>
+#include <octomap/OcTreeKey.h>
+
+typedef octomath::Vector3 point3d;
 
 namespace occupancy_map_monitor
 {
@@ -93,6 +97,44 @@ void OccupancyMapMonitor::initialize()
     ROS_WARN("Target frame specified but no TF instance specified. No transforms will be applied to received data.");
 
   tree_.reset(new OccMapTree(map_resolution_));
+
+  ROS_INFO("Initialize octomap to the occupied state");
+  double x_min = -0.8;
+  if (!nh_.getParam("x_min", x_min)) {
+    ROS_WARN("x_min not specified for Octomap");
+  }
+  double x_max = 0.8;
+  if (!nh_.getParam("x_max", x_max)) {
+    ROS_WARN("x_max not specified for Octomap");
+  }
+  double y_min = 0.6;
+  if (!nh_.getParam("y_min", y_min)) {
+    ROS_WARN("y_min not specified for Octomap");
+  }
+  double y_max = 2.0;
+  if (!nh_.getParam("y_max", y_max)) {
+    ROS_WARN("y_max not specified for Octomap");
+  }
+  double z_min = 0.0;
+  if (!nh_.getParam("z_min", z_min)) {
+    ROS_WARN("z_min not specified for Octomap");
+  }
+  double z_max = 1.3;
+  if (!nh_.getParam("z_max", z_max)) {
+    ROS_WARN("z_max not specified for Octomap");
+  }
+  for (double ix = x_min; ix < x_max; ix += map_resolution_) {
+    for (double iy = y_min; iy < y_max; iy += map_resolution_) {
+      for (double iz = z_min; iz < z_max; iz += map_resolution_) {
+        point3d point(ix, iy, iz);
+        octomap::OcTreeKey key;
+        key = tree_->coordToKey(ix, iy, iz);
+        tree_->updateNode(key, true);
+      }
+    }
+  }
+
+
   tree_const_ = tree_;
 
   XmlRpc::XmlRpcValue sensor_list;
