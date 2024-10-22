@@ -45,6 +45,12 @@
 #include <moveit/occupancy_map_monitor/occupancy_map_updater.h>
 #include <moveit/point_containment_filter/shape_mask.h>
 
+// octomap_msgs
+#include <octomap_msgs/Octomap.h>
+#include <octomap_msgs/GetOctomap.h>
+#include <octomap_msgs/BoundingBoxQuery.h>
+#include <octomap_msgs/conversions.h>
+
 #include <memory>
 
 namespace occupancy_map_monitor
@@ -99,6 +105,7 @@ private:
 
   std::unique_ptr<point_containment_filter::ShapeMask> shape_mask_;
   std::vector<int> mask_;
+  ros::Publisher binary_map_pub_;
 };
 }  // namespace occupancy_map_monitor
 

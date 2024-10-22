@@ -58,6 +58,7 @@ PointCloudOctomapUpdater::PointCloudOctomapUpdater()
   , point_cloud_subscriber_(nullptr)
   , point_cloud_filter_(nullptr)
 {
+  binary_map_pub_ = private_nh_.advertise<octomap_msgs::Octomap>("octomap_binary", 1, false);
 }
 
 PointCloudOctomapUpdater::~PointCloudOctomapUpdater()
@@ -329,17 +330,23 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
   try
   {
     /* mark free cells only if not seen occupied in this cloud */
-    for (octomap::KeySet::iterator it = free_cells.begin(), end = free_cells.end(); it != end; ++it)
+    for (octomap::KeySet::iterator it = free_cells.begin(), end = free_cells.end(); it != end; ++it) {
       tree_->updateNode(*it, false);
+      frontier_tree_->updateNode(*it, false);
+    }
 
     /* now mark all occupied cells */
-    for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it)
+    for (octomap::KeySet::iterator it = occupied_cells.begin(), end = occupied_cells.end(); it != end; ++it) {
       tree_->updateNode(*it, true);
+      frontier_tree_->updateNode(*it, true);
+    }
 
     // set the logodds to the minimum for the cells that are part of the model
     const float lg = tree_->getClampingThresMinLog() - tree_->getClampingThresMaxLog();
-    for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
+    for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it) {
       tree_->updateNode(*it, lg);
+      frontier_tree_->updateNode(*it, lg);
+    }
   }
   catch (...)
   {
@@ -355,5 +362,13 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
     pcd_modifier.resize(filtered_cloud_size);
     filtered_cloud_publisher_.publish(*filtered_cloud);
   }
+
+  octomap_msgs::Octomap map;
+  map.header.frame_id = "world";
+  map.header.stamp = ros::Time::now();
+  if (octomap_msgs::binaryMapToMsg(*frontier_tree_, map))
+    binary_map_pub_.publish(map);
+  else
+    ROS_ERROR("Error serializing OctoMap");
 }
 }  // namespace occupancy_map_monitor

@@ -84,6 +84,11 @@ public:
     return tree_const_;
   }
 
+  const OccMapTreePtr& getOcFrontierTreePtr()
+  {
+    return frontier_tree_;
+  }
+
   const std::string& getMapFrame() const
   {
     return map_frame_;
@@ -141,8 +146,11 @@ private:
   double map_resolution_;
   boost::mutex parameters_lock_;
 
+  // For collision detection
   OccMapTreePtr tree_;
   OccMapTreeConstPtr tree_const_;
+  // For frontier detection
+  OccMapTreePtr frontier_tree_;
 
   std::unique_ptr<pluginlib::ClassLoader<OccupancyMapUpdater> > updater_plugin_loader_;
   std::vector<OccupancyMapUpdaterPtr> map_updaters_;

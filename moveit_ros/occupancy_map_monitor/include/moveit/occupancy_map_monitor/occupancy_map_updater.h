@@ -102,6 +102,7 @@ protected:
   OccupancyMapMonitor* monitor_;
   std::string type_;
   OccMapTreePtr tree_;
+  OccMapTreePtr frontier_tree_;
   TransformCacheProvider transform_provider_callback_;
   ShapeTransformCache transform_cache_;
   bool debug_info_;

@@ -97,6 +97,7 @@ void OccupancyMapMonitor::initialize()
     ROS_WARN("Target frame specified but no TF instance specified. No transforms will be applied to received data.");
 
   tree_.reset(new OccMapTree(map_resolution_));
+  frontier_tree_.reset(new OccMapTree(map_resolution_));
 
   ROS_INFO("Initialize octomap to the occupied state");
   double x_min = -0.8;
