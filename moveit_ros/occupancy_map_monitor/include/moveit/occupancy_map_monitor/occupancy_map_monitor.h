@@ -129,6 +129,14 @@ public:
     return active_;
   }
 
+  // exploration boundary
+  double x_min_;
+  double x_max_;
+  double y_min_;
+  double y_max_;
+  double z_min_;
+  double z_max_;
+
 private:
   void initialize();
 

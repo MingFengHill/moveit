@@ -50,6 +50,12 @@ void OccupancyMapUpdater::setMonitor(OccupancyMapMonitor* monitor)
   monitor_ = monitor;
   tree_ = monitor->getOcTreePtr();
   frontier_tree_ = monitor->getOcFrontierTreePtr();
+  x_min_ = monitor->x_min_;
+  x_max_ = monitor->x_max_;
+  y_min_ = monitor->y_min_;
+  y_max_ = monitor->y_max_;
+  z_min_ = monitor->z_min_;
+  z_max_ = monitor->z_max_;
 }
 
 void OccupancyMapUpdater::readXmlParam(XmlRpc::XmlRpcValue& params, const std::string& param_name, double* value)

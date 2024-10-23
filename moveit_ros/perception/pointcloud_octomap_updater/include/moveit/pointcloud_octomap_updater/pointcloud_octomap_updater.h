@@ -45,12 +45,13 @@
 #include <moveit/occupancy_map_monitor/occupancy_map_updater.h>
 #include <moveit/point_containment_filter/shape_mask.h>
 
-// octomap_msgs
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/GetOctomap.h>
 #include <octomap_msgs/BoundingBoxQuery.h>
 #include <octomap_msgs/conversions.h>
-
+#include <octomap/OcTreeKey.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <std_msgs/ColorRGBA.h>
 #include <memory>
 
 namespace occupancy_map_monitor
@@ -77,6 +78,10 @@ private:
   bool getShapeTransform(ShapeHandle h, Eigen::Isometry3d& transform) const;
   void cloudMsgCallback(const sensor_msgs::PointCloud2::ConstPtr& cloud_msg);
   void stopHelper();
+  void trackChanges();
+  void publishFrontier(const ros::Time& rostime);
+  octomap::KeySet findFrontier();
+  void mergeFrontier(octomap::KeySet& newFrontier);
 
   ros::NodeHandle root_nh_;
   ros::NodeHandle private_nh_;
@@ -105,7 +110,12 @@ private:
 
   std::unique_ptr<point_containment_filter::ShapeMask> shape_mask_;
   std::vector<int> mask_;
+
+  // topic "/moveit/frontier_octomap"
   ros::Publisher binary_map_pub_;
+  ros::Publisher frontier_marker_pub;
+  octomap::KeySet changed_cell_;
+  octomap::KeySet forntier_cell_;
 };
 }  // namespace occupancy_map_monitor
 

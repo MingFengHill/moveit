@@ -100,33 +100,33 @@ void OccupancyMapMonitor::initialize()
   frontier_tree_.reset(new OccMapTree(map_resolution_));
 
   ROS_INFO("Initialize octomap to the occupied state");
-  double x_min = -0.8;
-  if (!nh_.getParam("x_min", x_min)) {
+  x_min_ = -0.8;
+  if (!nh_.getParam("x_min", x_min_)) {
     ROS_WARN("x_min not specified for Octomap");
   }
-  double x_max = 0.8;
-  if (!nh_.getParam("x_max", x_max)) {
+  x_max_ = 0.8;
+  if (!nh_.getParam("x_max", x_max_)) {
     ROS_WARN("x_max not specified for Octomap");
   }
-  double y_min = 0.6;
-  if (!nh_.getParam("y_min", y_min)) {
+  y_min_ = 0.6;
+  if (!nh_.getParam("y_min", y_min_)) {
     ROS_WARN("y_min not specified for Octomap");
   }
-  double y_max = 2.0;
-  if (!nh_.getParam("y_max", y_max)) {
+  y_max_ = 2.0;
+  if (!nh_.getParam("y_max", y_max_)) {
     ROS_WARN("y_max not specified for Octomap");
   }
-  double z_min = 0.0;
-  if (!nh_.getParam("z_min", z_min)) {
+  z_min_ = 0.0;
+  if (!nh_.getParam("z_min", z_min_)) {
     ROS_WARN("z_min not specified for Octomap");
   }
-  double z_max = 1.3;
-  if (!nh_.getParam("z_max", z_max)) {
+  z_max_ = 1.3;
+  if (!nh_.getParam("z_max", z_max_)) {
     ROS_WARN("z_max not specified for Octomap");
   }
-  for (double ix = x_min; ix < x_max; ix += map_resolution_) {
-    for (double iy = y_min; iy < y_max; iy += map_resolution_) {
-      for (double iz = z_min; iz < z_max; iz += map_resolution_) {
+  for (double ix = x_min_; ix < x_max_; ix += map_resolution_) {
+    for (double iy = y_min_; iy < y_max_; iy += map_resolution_) {
+      for (double iz = z_min_; iz < z_max_; iz += map_resolution_) {
         point3d point(ix, iy, iz);
         octomap::OcTreeKey key;
         key = tree_->coordToKey(ix, iy, iz);

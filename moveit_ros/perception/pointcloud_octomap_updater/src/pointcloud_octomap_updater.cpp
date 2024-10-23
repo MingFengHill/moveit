@@ -58,7 +58,8 @@ PointCloudOctomapUpdater::PointCloudOctomapUpdater()
   , point_cloud_subscriber_(nullptr)
   , point_cloud_filter_(nullptr)
 {
-  binary_map_pub_ = private_nh_.advertise<octomap_msgs::Octomap>("octomap_binary", 1, false);
+  binary_map_pub_ = private_nh_.advertise<octomap_msgs::Octomap>("frontier_octomap", 1, false);
+  frontier_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("frontier_cells", 1, false);
 }
 
 PointCloudOctomapUpdater::~PointCloudOctomapUpdater()
@@ -363,6 +364,14 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
     filtered_cloud_publisher_.publish(*filtered_cloud);
   }
 
+  ROS_INFO("!======= handle a frame =======!");
+  trackChanges();
+  octomap::KeySet newFrontier = findFrontier();
+  mergeFrontier(newFrontier);
+  publishFrontier(cloud_msg->header.stamp);
+  ROS_INFO("!==============================!");
+
+
   octomap_msgs::Octomap map;
   map.header.frame_id = "world";
   map.header.stamp = ros::Time::now();
@@ -371,4 +380,194 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
   else
     ROS_ERROR("Error serializing OctoMap");
 }
+
+void PointCloudOctomapUpdater::trackChanges()
+{
+//   ROS_INFO("PointCloudOctomapUpdater::trackChanges()");
+  frontier_tree_->enableChangeDetection(true);
+  changed_cell_.clear();
+  octomap::KeyBoolMap::const_iterator startPnt = frontier_tree_->changedKeysBegin();
+  octomap::KeyBoolMap::const_iterator endPnt = frontier_tree_->changedKeysEnd();
+  for (octomap::KeyBoolMap::const_iterator iter = startPnt; iter != endPnt; ++iter) {
+    changed_cell_.insert(iter->first);
+  }
+  frontier_tree_->resetChangeDetection();
+  ROS_INFO("Find %d changed cells.", changed_cell_.size());
+}
+
+octomap::KeySet PointCloudOctomapUpdater::findFrontier()
+{
+  octomap::KeySet frontierCells;
+  int frontierSize = 0;
+  if (changed_cell_.size() == 0) {
+    return frontierCells;
+  }
+  // Check if the point is inside the bounding box
+  for (octomap::KeySet::iterator it = changed_cell_.begin(), end = changed_cell_.end(); it != end; ++it) {
+    octomap::point3d pt = frontier_tree_->keyToCoord(*it);
+    double cur_x = pt.x();
+    double cur_y = pt.y();
+    double cur_z = pt.z();
+    if (cur_x < x_min_ || cur_x > x_max_ ||
+        cur_y < y_min_ || cur_y > y_max_ ||
+        cur_z < z_min_ || cur_z > z_max_) {
+      continue;
+    }
+    octomap::OcTreeNode* changedCellNode = frontier_tree_->search(*it);
+    if (changedCellNode == nullptr) {
+        ROS_ERROR("changedCellNode is nullptr.");
+        continue;
+    }
+
+    std::vector<octomap::point3d> changedCellNeighbor;
+    bool changedCellOccupied = frontier_tree_->isNodeOccupied(changedCellNode);
+    if(!changedCellOccupied) {
+      bool unknownCellFlag = false;
+      bool freeCellFlag = false;
+      
+      // https://github.com/OctoMap/octomap/issues/42
+      // 26 neighbours
+      for (int x = -1; x < 2; x++) {
+        for (int y = -1; y < 2; y++) {
+          for (int z = -1; z < 2; z++) {
+            if (x == 0 || y == 0 || z == 0) {
+                continue;
+            }
+            octomap::OcTreeKey neighbor_key(it->k[0]+x, it->k[1]+y, it->k[2]+z);
+            octomap::point3d query = frontier_tree_->keyToCoord(neighbor_key);
+            changedCellNeighbor.push_back(query);
+          }        
+        }
+      }
+      for (std::vector<octomap::point3d>::iterator iter = changedCellNeighbor.begin();
+        iter != changedCellNeighbor.end(); iter++) {
+        // Check point state: unknown(null)/free
+        octomap::OcTreeNode* node = frontier_tree_->search(*iter);
+        if(node == NULL)
+          unknownCellFlag = true;
+        else if(!frontier_tree_->isNodeOccupied(node))
+          freeCellFlag = true;
+      }
+      if(unknownCellFlag && freeCellFlag) {
+        frontierCells.insert(*it);
+        frontierSize++;
+      }
+    }
+  }
+  ROS_INFO("Find %d new frontier cells.", frontierSize);
+  return frontierCells;
+}
+
+void PointCloudOctomapUpdater::publishFrontier(const ros::Time& rostime)
+{
+  if (forntier_cell_.size() == 0) {
+    return;
+  }
+  int treeDepth = frontier_tree_->getTreeDepth();
+  // init markers for free space:
+  visualization_msgs::MarkerArray frontierNodesVis;
+  // each array stores all cubes of a different size, one for each depth level:
+  frontierNodesVis.markers.resize(treeDepth+1);
+  for (octomap::OcTree::iterator it = frontier_tree_->begin(treeDepth),end = frontier_tree_->end(); it != end; ++it) {
+    bool isfron = false;
+    for (auto iter = forntier_cell_.begin(), end=forntier_cell_.end(); iter!= end; ++iter) {
+      octomap::point3d fpoint;
+      fpoint = frontier_tree_->keyToCoord(*iter);
+      if (it.getX() == fpoint.x() && it.getY() == fpoint.y() && it.getZ() == fpoint.z() )
+        isfron = true;
+    }
+    if (isfron) {
+      double x = it.getX();
+      double y = it.getY();
+      double z = it.getZ();
+      unsigned idx = it.getDepth();
+      assert(idx < frontierNodesVis.markers.size());
+
+      geometry_msgs::Point cubeCenter;
+      cubeCenter.x = x;
+      cubeCenter.y = y;
+      cubeCenter.z = z;
+      frontierNodesVis.markers[idx].points.push_back(cubeCenter);
+    }
+    std_msgs::ColorRGBA frontierColor;
+    frontierColor.r = 1.0;
+    frontierColor.g = 0.0;
+    frontierColor.b = 0.0;
+    frontierColor.a = 1.0;
+    for (unsigned i = 0; i < frontierNodesVis.markers.size(); ++i) {
+      double size = frontier_tree_->getNodeSize(i);
+      frontierNodesVis.markers[i].header.frame_id = "world";
+      frontierNodesVis.markers[i].header.stamp = rostime;
+      frontierNodesVis.markers[i].ns = "map";
+      frontierNodesVis.markers[i].id = i;
+      frontierNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
+      frontierNodesVis.markers[i].scale.x = size;
+      frontierNodesVis.markers[i].scale.y = size;
+      frontierNodesVis.markers[i].scale.z = size;
+      frontierNodesVis.markers[i].color = frontierColor;
+      if (frontierNodesVis.markers[i].points.size() > 0)
+        frontierNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
+      else
+        frontierNodesVis.markers[i].action = visualization_msgs::Marker::DELETE;
+    }
+    frontier_marker_pub.publish(frontierNodesVis);
+  }
+  return;
+}
+
+void PointCloudOctomapUpdater::mergeFrontier(octomap::KeySet& newFrontier)
+{
+  octomap::KeySet deleteSet;
+  for (auto it = forntier_cell_.begin(), end=forntier_cell_.end(); it!= end; ++it) {
+    std::vector<octomap::point3d> cellNeighbor;
+    bool unknownCellFlag = false;
+    bool freeCellFlag = false;
+
+    octomap::OcTreeNode* cellNode = frontier_tree_->search(*it);
+    if (cellNode == nullptr) {
+        ROS_ERROR("cellNode is nullptr.");
+        continue;
+    }
+
+    bool cellOccupied = frontier_tree_->isNodeOccupied(cellNode);
+    if(!cellOccupied) {
+      // https://github.com/OctoMap/octomap/issues/42
+      // 26 neighbours
+      for (int x = -1; x < 2; x++) {
+        for (int y = -1; y < 2; y++) {
+          for (int z = -1; z < 2; z++) {
+            if (x == 0 || y == 0 || z == 0) {
+                continue;
+            }
+            octomap::OcTreeKey neighbor_key(it->k[0]+x, it->k[1]+y, it->k[2]+z);
+            octomap::point3d query = frontier_tree_->keyToCoord(neighbor_key);
+            cellNeighbor.push_back(query);
+          }        
+        }
+      }
+      for (std::vector<octomap::point3d>::iterator iter = cellNeighbor.begin(); iter != cellNeighbor.end(); iter++) {
+        // Check point state: unknown(null)/free
+        octomap::OcTreeNode* node = frontier_tree_->search(*iter);
+        if(node == NULL)
+          unknownCellFlag = true;
+        else if(!frontier_tree_->isNodeOccupied(node))
+          freeCellFlag = true;
+      }
+      if(unknownCellFlag && freeCellFlag) {
+        continue;
+      }
+    }
+    deleteSet.insert(*it);
+  }
+  ROS_INFO("Delete %d frontier cells.", deleteSet.size());
+  ROS_INFO("Frontier cells before update: %d.", forntier_cell_.size());
+  for (auto it = deleteSet.begin(), end=deleteSet.end(); it!= end; ++it) {
+    forntier_cell_.erase(*it);
+  }
+  for (auto it = newFrontier.begin(), end=newFrontier.end(); it!= end; ++it) {
+    forntier_cell_.insert(*it);
+  }
+  ROS_INFO("Frontier cells after update: %d.", forntier_cell_.size());
+}
+
 }  // namespace occupancy_map_monitor
