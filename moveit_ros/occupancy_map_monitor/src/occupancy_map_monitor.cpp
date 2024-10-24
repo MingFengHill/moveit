@@ -124,9 +124,10 @@ void OccupancyMapMonitor::initialize()
   if (!nh_.getParam("z_max", z_max_)) {
     ROS_WARN("z_max not specified for Octomap");
   }
-  for (double ix = x_min_; ix < x_max_; ix += map_resolution_) {
-    for (double iy = y_min_; iy < y_max_; iy += map_resolution_) {
-      for (double iz = z_min_; iz < z_max_; iz += map_resolution_) {
+  ROS_INFO("octomap resolution : %f.", map_resolution_);
+  for (double ix = x_min_; ix < x_max_; ix += map_resolution_/2) {
+    for (double iy = y_min_; iy < y_max_; iy += map_resolution_/2) {
+      for (double iz = z_min_; iz < z_max_; iz += map_resolution_/2) {
         point3d point(ix, iy, iz);
         octomap::OcTreeKey key;
         key = tree_->coordToKey(ix, iy, iz);

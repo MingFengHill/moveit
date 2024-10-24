@@ -56,6 +56,7 @@ void OccupancyMapUpdater::setMonitor(OccupancyMapMonitor* monitor)
   y_max_ = monitor->y_max_;
   z_min_ = monitor->z_min_;
   z_max_ = monitor->z_max_;
+  map_resolution_ = monitor_->getMapResolution();
 }
 
 void OccupancyMapUpdater::readXmlParam(XmlRpc::XmlRpcValue& params, const std::string& param_name, double* value)

@@ -81,6 +81,7 @@ private:
   void stopHelper();
   void trackChanges();
   void publishFrontier(const ros::Time& rostime);
+  void publishFrontierNew(const ros::Time& rostime);
   octomap::KeySet findFrontier();
   void mergeFrontier(octomap::KeySet& newFrontier);
 
@@ -116,7 +117,7 @@ private:
   ros::Publisher binary_map_pub_;
   ros::Publisher frontier_marker_pub;
   octomap::KeySet changed_cell_;
-  octomap::KeySet forntier_cell_;
+  octomap::KeySet frontier_cell_;
 };
 }  // namespace occupancy_map_monitor
 

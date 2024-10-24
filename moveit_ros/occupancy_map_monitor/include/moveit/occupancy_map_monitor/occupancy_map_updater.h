@@ -111,6 +111,7 @@ protected:
   std::string type_;
   OccMapTreePtr tree_;
   OccMapTreePtr frontier_tree_;
+  double map_resolution_;
   TransformCacheProvider transform_provider_callback_;
   ShapeTransformCache transform_cache_;
   bool debug_info_;
