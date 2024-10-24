@@ -364,12 +364,26 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
     filtered_cloud_publisher_.publish(*filtered_cloud);
   }
 
-  ROS_INFO("!======= handle a frame =======!");
+  ROS_INFO("!======= handle a point cloud =======!");
+  auto start_time = std::chrono::high_resolution_clock::now();
   trackChanges();
+  auto end_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> trackDuration = end_time - start_time;
+  start_time = std::chrono::high_resolution_clock::now();
   octomap::KeySet newFrontier = findFrontier();
+  end_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> findDuration = end_time - start_time;
+  start_time = std::chrono::high_resolution_clock::now();
   mergeFrontier(newFrontier);
+  end_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> mergeDuration = end_time - start_time;
+  start_time = std::chrono::high_resolution_clock::now();
   publishFrontier(cloud_msg->header.stamp);
-  ROS_INFO("!==============================!");
+  end_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> publishDuration = end_time - start_time;
+  ROS_INFO("track time: %.1f, find time %.1f, merge time %.1f, publish time: %.1f", 
+    trackDuration.count(), findDuration.count(), mergeDuration.count(), publishDuration.count());
+  ROS_INFO("!=====================================!");
 
 
   octomap_msgs::Octomap map;
