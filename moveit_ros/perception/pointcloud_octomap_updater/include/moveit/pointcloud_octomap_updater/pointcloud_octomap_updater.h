@@ -84,6 +84,7 @@ private:
   void publishFrontierNew(const ros::Time& rostime);
   octomap::KeySet findFrontier();
   void mergeFrontier(octomap::KeySet& newFrontier);
+  void checkFrontierStatus();
 
   ros::NodeHandle root_nh_;
   ros::NodeHandle private_nh_;

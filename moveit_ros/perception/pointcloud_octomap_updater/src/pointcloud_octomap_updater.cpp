@@ -381,6 +381,7 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
   publishFrontierNew(cloud_msg->header.stamp);
   end_time = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> publishDuration = end_time - start_time;
+  checkFrontierStatus();
   ROS_INFO("track time: %.1f, find time %.1f, merge time %.1f, publish time: %.1f", 
     trackDuration.count(), findDuration.count(), mergeDuration.count(), publishDuration.count());
   ROS_INFO("!=====================================!");
@@ -545,10 +546,10 @@ void PointCloudOctomapUpdater::publishFrontierNew(const ros::Time& rostime)
   marker.scale.x = map_resolution_;
   marker.scale.y = map_resolution_;
   marker.scale.z = map_resolution_;
-  marker.color.r = 0.0;
-  marker.color.g = 1.0;
-  marker.color.b = 1.0;
-  marker.color.a = 1.0;
+  marker.color.r = 1;
+  marker.color.g = 0;
+  marker.color.b = 0;
+  marker.color.a = 0.5;
 
   int id = 0;
   for (const auto& key : frontier_cell_) {
@@ -616,6 +617,32 @@ void PointCloudOctomapUpdater::mergeFrontier(octomap::KeySet& newFrontier)
     frontier_cell_.insert(*it);
   }
   ROS_INFO("Frontier cells after update: %d.", frontier_cell_.size());
+}
+
+void PointCloudOctomapUpdater::checkFrontierStatus() {
+  if (frontier_cell_.size() == 0) {
+    return;
+  }
+  int freeNum = 0;
+  int occupiedNum = 0;
+  int unknownNum = 0;
+  for (const auto& key : frontier_cell_) {
+    octomap::OcTreeNode* node = frontier_tree_->search(key);
+    if (node == nullptr) {
+      unknownNum++;
+      continue;
+    }
+    if(frontier_tree_->isNodeOccupied(node)) {
+      occupiedNum++;
+    } else {
+      freeNum++;
+    }
+  }
+  if (occupiedNum != 0 || unknownNum != 0) {
+    ROS_ERROR("freeNum: %d, occupiedNum: %d, unknownNum: %d", freeNum, occupiedNum, unknownNum);
+  } else {
+    ROS_INFO("freeNum: %d, occupiedNum: %d, unknownNum: %d", freeNum, occupiedNum, unknownNum);
+  }
 }
 
 }  // namespace occupancy_map_monitor
