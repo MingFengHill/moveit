@@ -85,6 +85,8 @@ private:
   octomap::KeySet findFrontier();
   void mergeFrontier(octomap::KeySet& newFrontier);
   void checkFrontierStatus();
+  void checkExplorationStatus();
+  void divideExplorationSpace();
 
   ros::NodeHandle root_nh_;
   ros::NodeHandle private_nh_;
@@ -116,7 +118,10 @@ private:
 
   // topic "/moveit/frontier_octomap"
   ros::Publisher binary_map_pub_;
+  // topic "frontier_cells"
   ros::Publisher frontier_marker_pub;
+  // topic "subregion"
+  ros::Publisher subregion_marker_pub;
   octomap::KeySet changed_cell_;
   octomap::KeySet frontier_cell_;
 };

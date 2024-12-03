@@ -136,6 +136,7 @@ public:
   double y_max_;
   double z_min_;
   double z_max_;
+  double subregion_size_;
 
 private:
   void initialize();

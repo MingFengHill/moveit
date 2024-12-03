@@ -44,6 +44,7 @@
 #include <XmlRpcException.h>
 
 #include <memory>
+#include <cmath> 
 
 namespace occupancy_map_monitor
 {
@@ -60,6 +61,7 @@ PointCloudOctomapUpdater::PointCloudOctomapUpdater()
 {
   binary_map_pub_ = private_nh_.advertise<octomap_msgs::Octomap>("frontier_octomap", 1, false);
   frontier_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("frontier_cells", 1, false);
+  subregion_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("subregion", 1, false);
 }
 
 PointCloudOctomapUpdater::~PointCloudOctomapUpdater()
@@ -381,7 +383,8 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
   publishFrontierNew(cloud_msg->header.stamp);
   end_time = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> publishDuration = end_time - start_time;
-  checkFrontierStatus();
+  checkExplorationStatus();
+  divideExplorationSpace();
   ROS_INFO("track time: %.1f, find time %.1f, merge time %.1f, publish time: %.1f", 
     trackDuration.count(), findDuration.count(), mergeDuration.count(), publishDuration.count());
   ROS_INFO("!=====================================!");
@@ -643,6 +646,87 @@ void PointCloudOctomapUpdater::checkFrontierStatus() {
   } else {
     ROS_INFO("freeNum: %d, occupiedNum: %d, unknownNum: %d", freeNum, occupiedNum, unknownNum);
   }
+}
+
+void PointCloudOctomapUpdater::checkExplorationStatus() {
+  octomap::point3d min_p(x_min_, y_min_, z_min_);
+  octomap::point3d max_p(x_max_, y_max_, z_max_);
+
+  int freeCnt = 0;
+  int occupiedCnt = 0;
+
+  octomap::OcTree::leaf_bbx_iterator it = frontier_tree_->begin_leafs_bbx(min_p, max_p);
+  octomap::OcTree::leaf_bbx_iterator end = frontier_tree_->end_leafs_bbx();
+
+  for (; it != end; ++it) {
+    if (frontier_tree_->isNodeOccupied(*it)) {
+      occupiedCnt++;
+    } else {
+      freeCnt++;
+    }
+  }
+
+  double resolution = frontier_tree_->getResolution();
+  double x_length = max_p.x() - min_p.x();
+  double y_length = max_p.y() - min_p.y();
+  double z_length = max_p.z() - min_p.z();
+
+  int x_nodes = static_cast<int>(std::ceil(x_length / resolution));
+  int y_nodes = static_cast<int>(std::ceil(y_length / resolution));
+  int z_nodes = static_cast<int>(std::ceil(z_length / resolution));
+
+  long total_nodes = static_cast<long>(x_nodes) * y_nodes * z_nodes;
+
+  int unknownCnt = total_nodes - freeCnt - occupiedCnt;
+
+  if (unknownCnt < 0) {
+    ROS_WARN("The calculated number of unknown nodes is negative, which may indicate an error. Setting it to 0.");
+    unknownCnt = 0;
+  }
+  ROS_INFO("freeCnt: %d, occupiedCnt: %d, unknownCnt: %d", freeCnt, occupiedCnt, unknownCnt);
+}
+
+void PointCloudOctomapUpdater::divideExplorationSpace() {
+  int x_count = static_cast<int>(std::ceil((x_max_ - x_min_) / subregion_size_));
+  int y_count = static_cast<int>(std::ceil((y_max_ - y_min_) / subregion_size_));
+  int z_count = static_cast<int>(std::ceil((z_max_ - z_min_) / subregion_size_));
+  visualization_msgs::MarkerArray marker_array;
+  int id = 0;
+
+  for (int i = 0; i < x_count; ++i) {
+    for (int j = 0; j < y_count; ++j) {
+      for (int k = 0; k < z_count; ++k) {
+        visualization_msgs::Marker marker;
+        double gap = 0.02;
+        marker.header.frame_id = "world";
+        marker.header.stamp = ros::Time::now();
+        marker.ns = "subregions";
+        marker.id = id++;
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.action = visualization_msgs::Marker::ADD;
+        double center_x = x_min_ + (i + 0.5) * subregion_size_;
+        double center_y = y_min_ + (j + 0.5) * subregion_size_;
+        double center_z = z_min_ + (k + 0.5) * subregion_size_;
+        marker.pose.position.x = center_x;
+        marker.pose.position.y = center_y;
+        marker.pose.position.z = center_z;
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0;
+        marker.scale.x = subregion_size_ - gap;
+        marker.scale.y = subregion_size_ - gap;
+        marker.scale.z = subregion_size_ - gap;
+        marker.color.r = 0.0f;
+        marker.color.g = 1.0f;
+        marker.color.b = 0.0f;
+        marker.color.a = 0.3f;
+        marker.lifetime = ros::Duration(0);
+        marker_array.markers.push_back(marker);
+      }
+    }
+  }
+  subregion_marker_pub.publish(marker_array);
 }
 
 }  // namespace occupancy_map_monitor

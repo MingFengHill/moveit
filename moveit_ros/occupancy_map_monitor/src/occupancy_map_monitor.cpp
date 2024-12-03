@@ -124,6 +124,10 @@ void OccupancyMapMonitor::initialize()
   if (!nh_.getParam("z_max", z_max_)) {
     ROS_WARN("z_max not specified for Octomap");
   }
+  subregion_size_=0.7;
+  if (!nh_.getParam("subregion_size", subregion_size_)) {
+    ROS_WARN("subregion_size not specified for Octomap");
+  }
   ROS_INFO("octomap resolution : %f.", map_resolution_);
   for (double ix = x_min_; ix < x_max_; ix += map_resolution_/2) {
     for (double iy = y_min_; iy < y_max_; iy += map_resolution_/2) {

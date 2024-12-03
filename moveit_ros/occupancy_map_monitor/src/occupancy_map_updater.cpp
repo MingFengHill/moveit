@@ -56,6 +56,7 @@ void OccupancyMapUpdater::setMonitor(OccupancyMapMonitor* monitor)
   y_max_ = monitor->y_max_;
   z_min_ = monitor->z_min_;
   z_max_ = monitor->z_max_;
+  subregion_size_ = monitor->subregion_size_;
   map_resolution_ = monitor_->getMapResolution();
 }
 
