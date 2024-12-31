@@ -42,6 +42,7 @@
 #include <tf2/LinearMath/Transform.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <XmlRpcException.h>
+#include <std_msgs/Int64.h> 
 
 #include <memory>
 #include <cmath> 
@@ -62,6 +63,8 @@ PointCloudOctomapUpdater::PointCloudOctomapUpdater()
   binary_map_pub_ = private_nh_.advertise<octomap_msgs::Octomap>("frontier_octomap", 1, false);
   frontier_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("frontier_cells", 1, false);
   subregion_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("subregion", 1, false);
+  free_cell_cnt_pub = private_nh_.advertise<std_msgs::Int64>("free_cells_count", 1, false);
+  occupied_cell_cnt_pub = private_nh_.advertise<std_msgs::Int64>("occupied_cells_count", 1, false);
 }
 
 PointCloudOctomapUpdater::~PointCloudOctomapUpdater()
@@ -678,6 +681,13 @@ void PointCloudOctomapUpdater::checkExplorationStatus() {
   long total_nodes = static_cast<long>(x_nodes) * y_nodes * z_nodes;
 
   int unknownCnt = total_nodes - freeCnt - occupiedCnt;
+
+  std_msgs::Int64 freeCntMsg;
+  freeCntMsg.data = freeCnt;
+  free_cell_cnt_pub.publish(freeCntMsg);
+  std_msgs::Int64 occupiedCntMsg;
+  occupiedCntMsg.data = occupiedCnt;
+  occupied_cell_cnt_pub.publish(occupiedCntMsg);
 
   if (unknownCnt < 0) {
     ROS_WARN("The calculated number of unknown nodes is negative, which may indicate an error. Setting it to 0.");

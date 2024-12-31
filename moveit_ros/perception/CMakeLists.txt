@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_occupancy_map_monitor
   moveit_ros_planning
   nodelet
+  std_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -91,6 +92,7 @@ catkin_package(
     roscpp
     sensor_msgs
     tf2_geometry_msgs
+    std_msgs
   DEPENDS
     EIGEN3
 )

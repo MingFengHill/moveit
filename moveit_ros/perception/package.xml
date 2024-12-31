@@ -40,6 +40,7 @@
   <depend>moveit_ros_occupancy_map_monitor</depend>
   <depend>moveit_ros_planning</depend>
   <depend>nodelet</depend>
+  <depend>std_msgs</depend> 
 
   <build_depend>eigen</build_depend>
 
