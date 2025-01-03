@@ -36,6 +36,7 @@
 
 #include <moveit/occupancy_map_monitor/occupancy_map_monitor.h>
 #include <moveit/occupancy_map_monitor/occupancy_map_updater.h>
+#include <cmath>
 
 namespace occupancy_map_monitor
 {
@@ -58,6 +59,11 @@ void OccupancyMapUpdater::setMonitor(OccupancyMapMonitor* monitor)
   z_max_ = monitor->z_max_;
   subregion_size_ = monitor->subregion_size_;
   map_resolution_ = monitor_->getMapResolution();
+
+  num_subregions_per_row_ = std::ceil((x_max_-x_min_)/subregion_size_);
+  num_subregions_per_layer_ = std::ceil((y_max_-y_min_)/subregion_size_)*num_subregions_per_row_;
+  num_subregions_ = std::ceil((z_max_-z_min_)/subregion_size_)*num_subregions_per_layer_;
+  num_total_cells_ = std::pow((subregion_size_/map_resolution_), 3)*num_subregions_;
 }
 
 void OccupancyMapUpdater::readXmlParam(XmlRpc::XmlRpcValue& params, const std::string& param_name, double* value)

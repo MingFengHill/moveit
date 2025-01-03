@@ -42,10 +42,11 @@
 #include <tf2/LinearMath/Transform.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <XmlRpcException.h>
-#include <std_msgs/Int64.h> 
+#include <std_msgs/Int64MultiArray.h>
 
 #include <memory>
 #include <cmath> 
+#include <vector>
 
 namespace occupancy_map_monitor
 {
@@ -61,10 +62,11 @@ PointCloudOctomapUpdater::PointCloudOctomapUpdater()
   , point_cloud_filter_(nullptr)
 {
   binary_map_pub_ = private_nh_.advertise<octomap_msgs::Octomap>("frontier_octomap", 1, false);
-  frontier_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("frontier_cells", 1, false);
+  frontier_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("vis_frontier_cells", 1, false);
   subregion_marker_pub = private_nh_.advertise<visualization_msgs::MarkerArray>("subregion", 1, false);
-  free_cell_cnt_pub = private_nh_.advertise<std_msgs::Int64>("free_cells_count", 1, false);
-  occupied_cell_cnt_pub = private_nh_.advertise<std_msgs::Int64>("occupied_cells_count", 1, false);
+  free_cells_pub = private_nh_.advertise<std_msgs::Int64MultiArray>("free_cells", 1, false);
+  occupied_cells_pub = private_nh_.advertise<std_msgs::Int64MultiArray>("occupied_cells", 1, false);
+  frontier_cells_pub = private_nh_.advertise<std_msgs::Int64MultiArray>("frontier_cells", 1, false);
 }
 
 PointCloudOctomapUpdater::~PointCloudOctomapUpdater()
@@ -543,6 +545,7 @@ void PointCloudOctomapUpdater::publishFrontierNew(const ros::Time& rostime)
   }
   visualization_msgs::MarkerArray marker_array;
   visualization_msgs::Marker marker;
+  std::vector<int> frontierVec(num_subregions_, 0);
   
   marker.header.frame_id = "world";
   marker.header.stamp = ros::Time::now();
@@ -561,11 +564,29 @@ void PointCloudOctomapUpdater::publishFrontierNew(const ros::Time& rostime)
   for (const auto& key : frontier_cell_) {
       marker.id = id++;
       octomap::point3d point = frontier_tree_->keyToCoord(key);
-      marker.pose.position.x = point.x();
-      marker.pose.position.y = point.y();
-      marker.pose.position.z = point.z();
+      float x = point.x();
+      float y = point.y();
+      float z = point.z();
+
+      if (x < x_min_ || x > x_max_ || y < y_min_ || y > y_max_ || z < z_min_ || z > z_max_) {
+        // ROS_ERROR("The point is beyond the boundary");
+        continue;
+      }
+
+      marker.pose.position.x = x;
+      marker.pose.position.y = y;
+      marker.pose.position.z = z;
       marker_array.markers.push_back(marker);
+
+      int subregionId = std::floor((z - z_min_) / subregion_size_) * num_subregions_per_layer_;
+      subregionId += std::floor((y - y_min_) / subregion_size_) * num_subregions_per_row_;
+      subregionId += std::floor((x - x_min_) / subregion_size_);
+      frontierVec[subregionId] += 1;
   }
+
+  std_msgs::Int64MultiArray frontierMsg;
+  frontierMsg.data.insert(frontierMsg.data.end(), frontierVec.begin(), frontierVec.end());
+  frontier_cells_pub.publish(frontierMsg);
 
   frontier_marker_pub.publish(marker_array);
 }
@@ -657,43 +678,46 @@ void PointCloudOctomapUpdater::checkExplorationStatus() {
 
   int freeCnt = 0;
   int occupiedCnt = 0;
+  std::vector<int> freeVec(num_subregions_, 0);
+  std::vector<int> occupiedVec(num_subregions_, 0);
 
   octomap::OcTree::leaf_bbx_iterator it = frontier_tree_->begin_leafs_bbx(min_p, max_p);
   octomap::OcTree::leaf_bbx_iterator end = frontier_tree_->end_leafs_bbx();
 
   for (; it != end; ++it) {
+    octomap::point3d point = it.getCoordinate();
+    float x = point.x();
+    float y = point.y();
+    float z = point.z();
+
+    if (x < x_min_ || x > x_max_ || y < y_min_ || y > y_max_ || z < z_min_ || z > z_max_) {
+      // ROS_ERROR("The point is beyond the boundary");
+      continue;
+    }
+
+    int subregionId = std::floor((z - z_min_) / subregion_size_) * num_subregions_per_layer_;
+    subregionId += std::floor((y - y_min_) / subregion_size_) * num_subregions_per_row_;
+    subregionId += std::floor((x - x_min_) / subregion_size_);
+
     if (frontier_tree_->isNodeOccupied(*it)) {
       occupiedCnt++;
+      occupiedVec[subregionId] += 1;
     } else {
       freeCnt++;
+      freeVec[subregionId] += 1;
     }
   }
 
-  double resolution = frontier_tree_->getResolution();
-  double x_length = max_p.x() - min_p.x();
-  double y_length = max_p.y() - min_p.y();
-  double z_length = max_p.z() - min_p.z();
+  std_msgs::Int64MultiArray occupiedMsg;
+  occupiedMsg.data.insert(occupiedMsg.data.end(), occupiedVec.begin(), occupiedVec.end());
+  occupied_cells_pub.publish(occupiedMsg);
+  std_msgs::Int64MultiArray freeMsg;
+  freeMsg.data.insert(freeMsg.data.end(), freeVec.begin(), freeVec.end());
+  free_cells_pub.publish(freeMsg);
 
-  int x_nodes = static_cast<int>(std::ceil(x_length / resolution));
-  int y_nodes = static_cast<int>(std::ceil(y_length / resolution));
-  int z_nodes = static_cast<int>(std::ceil(z_length / resolution));
-
-  long total_nodes = static_cast<long>(x_nodes) * y_nodes * z_nodes;
-
-  int unknownCnt = total_nodes - freeCnt - occupiedCnt;
-
-  std_msgs::Int64 freeCntMsg;
-  freeCntMsg.data = freeCnt;
-  free_cell_cnt_pub.publish(freeCntMsg);
-  std_msgs::Int64 occupiedCntMsg;
-  occupiedCntMsg.data = occupiedCnt;
-  occupied_cell_cnt_pub.publish(occupiedCntMsg);
-
-  if (unknownCnt < 0) {
-    ROS_WARN("The calculated number of unknown nodes is negative, which may indicate an error. Setting it to 0.");
-    unknownCnt = 0;
-  }
-  ROS_INFO("freeCnt: %d, occupiedCnt: %d, unknownCnt: %d", freeCnt, occupiedCnt, unknownCnt);
+  int unknownCnt = num_total_cells_ - freeCnt - occupiedCnt;
+  ROS_INFO("totalCnt: %d, freeCnt: %d, occupiedCnt: %d, unknownCnt: %d", 
+           num_total_cells_, freeCnt, occupiedCnt, unknownCnt);
 }
 
 void PointCloudOctomapUpdater::divideExplorationSpace() {

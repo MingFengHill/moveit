@@ -122,10 +122,12 @@ private:
   ros::Publisher frontier_marker_pub;
   // topic "subregion"
   ros::Publisher subregion_marker_pub;
-  // topic "free_cells_count"
-  ros::Publisher free_cell_cnt_pub;
-  // topic "occupied_cells_count"
-  ros::Publisher occupied_cell_cnt_pub;
+  // topic "free_cells"
+  ros::Publisher free_cells_pub;
+  // topic "occupied_cells"
+  ros::Publisher occupied_cells_pub;
+  // topic "frontier_cells"
+  ros::Publisher frontier_cells_pub;
   octomap::KeySet changed_cell_;
   octomap::KeySet frontier_cell_;
 };

@@ -106,6 +106,10 @@ public:
   double z_min_;
   double z_max_;
   double subregion_size_;
+  int num_subregions_per_layer_;
+  int num_subregions_per_row_;
+  int num_subregions_;
+  int num_total_cells_;
 
 protected:
   OccupancyMapMonitor* monitor_;
