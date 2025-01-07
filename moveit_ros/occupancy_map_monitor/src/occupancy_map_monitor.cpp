@@ -129,18 +129,23 @@ void OccupancyMapMonitor::initialize()
     ROS_WARN("subregion_size not specified for Octomap");
   }
   ROS_INFO("octomap resolution : %f.", map_resolution_);
-  for (double ix = x_min_; ix < x_max_; ix += map_resolution_/2) {
-    for (double iy = y_min_; iy < y_max_; iy += map_resolution_/2) {
-      for (double iz = z_min_; iz < z_max_; iz += map_resolution_/2) {
-        point3d point(ix, iy, iz);
-        octomap::OcTreeKey key;
-        key = tree_->coordToKey(ix, iy, iz);
-        tree_->updateNode(key, true);
+  enable_fog_ = true;
+  if (!nh_.getParam("enable_fog", enable_fog_)) {
+    ROS_WARN("enable_fog not specified for Octomap");
+  }
+  ROS_INFO("enable fog : %s.", enable_fog_ ? "true" : "false");
+  if (enable_fog_) {
+    for (double ix = x_min_; ix < x_max_; ix += map_resolution_/2) {
+      for (double iy = y_min_; iy < y_max_; iy += map_resolution_/2) {
+        for (double iz = z_min_; iz < z_max_; iz += map_resolution_/2) {
+          point3d point(ix, iy, iz);
+          octomap::OcTreeKey key;
+          key = tree_->coordToKey(ix, iy, iz);
+          tree_->updateNode(key, true);
+        }
       }
     }
   }
-
-
   tree_const_ = tree_;
 
   XmlRpc::XmlRpcValue sensor_list;

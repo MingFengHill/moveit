@@ -137,6 +137,7 @@ public:
   double z_min_;
   double z_max_;
   double subregion_size_;
+  bool enable_fog_;
 
 private:
   void initialize();
