@@ -135,13 +135,21 @@ void OccupancyMapMonitor::initialize()
   }
   ROS_INFO("enable fog : %s.", enable_fog_ ? "true" : "false");
   if (enable_fog_) {
-    for (double ix = x_min_; ix < x_max_; ix += map_resolution_/2) {
-      for (double iy = y_min_; iy < y_max_; iy += map_resolution_/2) {
-        for (double iz = z_min_; iz < z_max_; iz += map_resolution_/2) {
+    float occupancy_threshold = tree_->getOccupancyThres()  - 0.1;
+    float prob_miss_log = tree_->getProbMissLog();
+    float prob_hit_log = tree_->getProbHitLog();
+    float clamping_thres = tree_->getClampingThresMinLog();
+    ROS_INFO("== occupancy_threshold: %f. ==", occupancy_threshold);
+    ROS_INFO("== prob_miss_log: %f. ==", prob_miss_log);
+    ROS_INFO("== prob_hit_log: %f. ==", prob_hit_log);
+    ROS_INFO("== clamping_thres: %f. ==", clamping_thres);
+    for (double ix = x_min_; ix < x_max_; ix += map_resolution_) {
+      for (double iy = y_min_; iy < y_max_; iy += map_resolution_) {
+        for (double iz = z_min_; iz < z_max_; iz += map_resolution_) {
           point3d point(ix, iy, iz);
           octomap::OcTreeKey key;
           key = tree_->coordToKey(ix, iy, iz);
-          tree_->updateNode(key, true);
+          tree_->updateNode(key, occupancy_threshold, false);
         }
       }
     }

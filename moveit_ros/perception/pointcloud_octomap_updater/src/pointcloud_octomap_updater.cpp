@@ -67,6 +67,8 @@ PointCloudOctomapUpdater::PointCloudOctomapUpdater()
   free_cells_pub = private_nh_.advertise<std_msgs::Int64MultiArray>("free_cells", 1, false);
   occupied_cells_pub = private_nh_.advertise<std_msgs::Int64MultiArray>("occupied_cells", 1, false);
   frontier_cells_pub = private_nh_.advertise<std_msgs::Int64MultiArray>("frontier_cells", 1, false);
+
+  published_frontier_count_ = -1;
 }
 
 PointCloudOctomapUpdater::~PointCloudOctomapUpdater()
@@ -458,6 +460,17 @@ octomap::KeySet PointCloudOctomapUpdater::findFrontier()
             }
             octomap::OcTreeKey neighbor_key(it->k[0]+x, it->k[1]+y, it->k[2]+z);
             octomap::point3d query = frontier_tree_->keyToCoord(neighbor_key);
+
+            // Check if the neighbor point is inside the bounding box
+            double query_x = query.x();
+            double query_y = query.y();
+            double query_z = query.z();
+            if (query_x < x_min_ || query_x > x_max_ ||
+                query_y < y_min_ || query_y > y_max_ ||
+                query_z < z_min_ || query_z > z_max_) {
+              continue;  // Skip this neighbor if it's out of bounds
+            }
+
             changedCellNeighbor.push_back(query);
           }        
         }
@@ -543,6 +556,22 @@ void PointCloudOctomapUpdater::publishFrontierNew(const ros::Time& rostime)
   if (frontier_cell_.size() == 0) {
     return;
   }
+  if (published_frontier_count_ != -1 && published_frontier_count_ > frontier_cell_.size()) {
+    visualization_msgs::MarkerArray delete_marker_array;
+    visualization_msgs::Marker delete_marker;
+    delete_marker.header.frame_id = "world";
+    delete_marker.header.stamp = ros::Time::now();
+    delete_marker.ns = "frontier_cells";
+    delete_marker.action = visualization_msgs::Marker::DELETE;
+    
+    for (int id = 0; id < published_frontier_count_; id++) {
+      delete_marker.id = id;
+      delete_marker_array.markers.push_back(delete_marker);
+    }
+    
+    frontier_marker_pub.publish(delete_marker_array);
+  }
+  published_frontier_count_ = frontier_cell_.size();
   visualization_msgs::MarkerArray marker_array;
   visualization_msgs::Marker marker;
   std::vector<int> frontierVec(num_subregions_, 0);
@@ -617,6 +646,17 @@ void PointCloudOctomapUpdater::mergeFrontier(octomap::KeySet& newFrontier)
             }
             octomap::OcTreeKey neighbor_key(it->k[0]+x, it->k[1]+y, it->k[2]+z);
             octomap::point3d query = frontier_tree_->keyToCoord(neighbor_key);
+
+            // Check if the neighbor point is inside the bounding box
+            double query_x = query.x();
+            double query_y = query.y();
+            double query_z = query.z();
+            if (query_x < x_min_ || query_x > x_max_ ||
+                query_y < y_min_ || query_y > y_max_ ||
+                query_z < z_min_ || query_z > z_max_) {
+              continue;  // Skip this neighbor if it's out of bounds
+            }
+
             cellNeighbor.push_back(query);
           }        
         }

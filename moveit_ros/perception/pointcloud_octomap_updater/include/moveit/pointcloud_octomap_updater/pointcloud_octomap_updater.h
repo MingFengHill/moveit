@@ -130,6 +130,7 @@ private:
   ros::Publisher frontier_cells_pub;
   octomap::KeySet changed_cell_;
   octomap::KeySet frontier_cell_;
+  int published_frontier_count_;
 };
 }  // namespace occupancy_map_monitor
 
