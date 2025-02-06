@@ -481,8 +481,9 @@ octomap::KeySet PointCloudOctomapUpdater::findFrontier()
         octomap::OcTreeNode* node = frontier_tree_->search(*iter);
         if(node == NULL)
           unknownCellFlag = true;
-        else if(!frontier_tree_->isNodeOccupied(node))
-          freeCellFlag = true;
+        freeCellFlag = true;
+        // else if(!frontier_tree_->isNodeOccupied(node))
+        //   freeCellFlag = true;
       }
       if(unknownCellFlag && freeCellFlag) {
         frontierCells.insert(*it);
@@ -666,8 +667,9 @@ void PointCloudOctomapUpdater::mergeFrontier(octomap::KeySet& newFrontier)
         octomap::OcTreeNode* node = frontier_tree_->search(*iter);
         if(node == NULL)
           unknownCellFlag = true;
-        else if(!frontier_tree_->isNodeOccupied(node))
-          freeCellFlag = true;
+        freeCellFlag = true;
+        // else if(!frontier_tree_->isNodeOccupied(node))
+        //   freeCellFlag = true;
       }
       if(unknownCellFlag && freeCellFlag) {
         continue;
