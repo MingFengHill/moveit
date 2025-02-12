@@ -723,6 +723,7 @@ void PointCloudOctomapUpdater::checkExplorationStatus() {
   std::vector<int> freeVec(num_subregions_, 0);
   std::vector<int> occupiedVec(num_subregions_, 0);
 
+  frontier_tree_->expand();
   octomap::OcTree::leaf_bbx_iterator it = frontier_tree_->begin_leafs_bbx(min_p, max_p);
   octomap::OcTree::leaf_bbx_iterator end = frontier_tree_->end_leafs_bbx();
 
