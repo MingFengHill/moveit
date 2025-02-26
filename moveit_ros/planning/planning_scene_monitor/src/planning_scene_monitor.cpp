@@ -703,6 +703,17 @@ void PlanningSceneMonitor::excludeRobotLinksFromOctree()
   bool warned = false;
   for (std::size_t i = 0; i < links.size(); ++i)
   {
+    std::string linkName = links[i]->getName();
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    // Here is a trick: prevent the link named "shelf" from performing filtering on the robot body, 
+    // in order to generate reinforcement learning training data.
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    if (linkName == "shelf")
+    {
+      ROS_INFO_NAMED(LOGNAME, "Including robot link in the octree. '%s'", linkName.c_str());
+      continue;
+    }
+    ROS_INFO_NAMED(LOGNAME, "Exclude robot links from the octree. '%s'", linkName.c_str());
     std::vector<shapes::ShapeConstPtr> shapes = links[i]->getShapes();  // copy shared ptrs on purpuse
     for (std::size_t j = 0; j < shapes.size(); ++j)
     {

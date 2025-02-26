@@ -327,6 +327,18 @@ void PointCloudOctomapUpdater::cloudMsgCallback(const sensor_msgs::PointCloud2::
 
   tree_->unlockRead();
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // In the data generation mode, the octomap does not need to be updated. 
+  // Only MoveIt is used to remove the points belonging to the robot's body.
+  ///////////////////////////////////////////////////////////////////////////////
+  if (enable_data_generation_ && filtered_cloud)
+  {
+    sensor_msgs::PointCloud2Modifier pcd_modifier(*filtered_cloud);
+    pcd_modifier.resize(filtered_cloud_size);
+    filtered_cloud_publisher_.publish(*filtered_cloud);
+    return;
+  }
+
   /* cells that overlap with the model are not occupied */
   for (octomap::KeySet::iterator it = model_cells.begin(), end = model_cells.end(); it != end; ++it)
     occupied_cells.erase(*it);

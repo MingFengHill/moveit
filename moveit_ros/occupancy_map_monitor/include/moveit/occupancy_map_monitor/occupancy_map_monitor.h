@@ -138,6 +138,7 @@ public:
   double z_max_;
   double subregion_size_;
   bool enable_fog_;
+  bool enable_data_generation_;
 
 private:
   void initialize();

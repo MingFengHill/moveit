@@ -134,6 +134,11 @@ void OccupancyMapMonitor::initialize()
     ROS_WARN("enable_fog not specified for Octomap");
   }
   ROS_INFO("enable fog : %s.", enable_fog_ ? "true" : "false");
+  enable_data_generation_ = false;
+  if (!nh_.getParam("enable_data_generation_mode", enable_data_generation_)) {
+    ROS_WARN("enable_data_generation_mode not specified");
+  }
+  ROS_INFO("enable data generation: %s.", enable_data_generation_ ? "true" : "false");
   if (enable_fog_) {
     float occupancy_threshold = tree_->getOccupancyThres()  - 0.1;
     float prob_miss_log = tree_->getProbMissLog();

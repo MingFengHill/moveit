@@ -106,6 +106,7 @@ public:
   double z_min_;
   double z_max_;
   double subregion_size_;
+  bool enable_data_generation_;
   int num_subregions_per_layer_;
   int num_subregions_per_row_;
   int num_subregions_;
