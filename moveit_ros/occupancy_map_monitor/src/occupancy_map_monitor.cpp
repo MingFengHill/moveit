@@ -141,13 +141,17 @@ void OccupancyMapMonitor::initialize()
   ROS_INFO("enable data generation: %s.", enable_data_generation_ ? "true" : "false");
   if (enable_fog_) {
     float occupancy_threshold = tree_->getOccupancyThres()  - 0.1;
+    float occupancy_threshold_log = tree_->getOccupancyThresLog();
     float prob_miss_log = tree_->getProbMissLog();
     float prob_hit_log = tree_->getProbHitLog();
-    float clamping_thres = tree_->getClampingThresMinLog();
+    float clamping_thres_min_log = tree_->getClampingThresMinLog();
+    float clamping_thres_max_log = tree_->getClampingThresMaxLog();
     ROS_INFO("== occupancy_threshold: %f. ==", occupancy_threshold);
+    ROS_INFO("== occupancy_threshold_log: %f. ==", occupancy_threshold_log);
     ROS_INFO("== prob_miss_log: %f. ==", prob_miss_log);
     ROS_INFO("== prob_hit_log: %f. ==", prob_hit_log);
-    ROS_INFO("== clamping_thres: %f. ==", clamping_thres);
+    ROS_INFO("== clamping_thres_min_log: %f. ==", clamping_thres_min_log);
+    ROS_INFO("== clamping_thres_max_log: %f. ==", clamping_thres_max_log);
     for (double ix = x_min_; ix < x_max_; ix += map_resolution_) {
       for (double iy = y_min_; iy < y_max_; iy += map_resolution_) {
         for (double iz = z_min_; iz < z_max_; iz += map_resolution_) {
